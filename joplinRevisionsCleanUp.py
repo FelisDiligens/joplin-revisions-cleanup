@@ -7,6 +7,7 @@ import glob # unix style pathname pattern expansion (in particular '~')
 import tarfile
 import sqlite3
 import io
+import subprocess
 
 USER_HOME             = os.path.expanduser("~")
 DATABASE_DIR          = "/media/veracrypt1/joplin-desktop" # my Joplin directory is in an ecrypted container
@@ -56,26 +57,22 @@ def getRevisionsFromDB():
         print("ERROR: Joplin's Veracrypt container not mounted, aborting !")
         sys.exit(1)
 
-def fileFilter(fileName): # only keeps Joplin's revision files (type 13)
-    result=False
-    f=open(fileName, "r")
-    for l in f:
-        if l.find("type_: 13") != -1:
-            result=True
-            break
-    f.close()
-    return result
-
-def fileMap(fileName): # extracts the revision ID out of the file name
-    i=fileName.rfind("/")
-    return fileName[i+1:-3]
-
 def getRevisionsFromFiles():
     if os.path.isdir(JOPLIN_DIR):
-        revisions=glob.glob(JOPLIN_DIR + "/*.md")
-        filteredList=filter(fileFilter, revisions)
-        revisions=map(fileMap, filteredList)
-        return set(revisions)
+        # searching the web, the consensus seems to be that the standard *nix grep command is so much faster
+        # and more efficient than anything that python can pull off parsing files for matching patterns.
+        # Moving to standard *nix commands here to screen Joplin's revision files (type 13).
+        # This should dramatically improve performances especially when a large number of files is considered.
+        grep=subprocess.run(["cd " + JOPLIN_DIR + ";grep -l 'type_: 13' *.md | cut -d '.' -f1"], capture_output=True, shell=True, text=True)
+        if grep.returncode == 0:
+            if len(grep.stdout) > 0:
+                revisions=grep.stdout[:-1].split('\n') # removes the last \n character from the captured output before splitting
+                return set(revisions)
+            else:
+                return set() # grep returned no matching file i.e. the result is an empty set
+        else:
+            print("ERROR: something went wrong parsing Joplin's files !")
+            sys.exit(1)
     else:
         print("ERROR: local sync directory of Joplin's remote not found !")
         sys.exit(1)
@@ -86,12 +83,13 @@ def reconcile():
     files=getRevisionsFromFiles()
     if len(database^files) == 0: # ^ symmetric difference, i.e. elements not in common in both sets 
         print("Joplin's database and remote files for revisions are perfectly in sync :)")
-    elif not database.issubset(files):
+        sys.exit(0) # everything's good in the world we can stop here
+    if not database.issubset(files):
         print ("ERROR: some revisions in DB are missing their remote file counterpart !")
         for item in list(database-files):
             print("    - " + item)
-    else:
-        orphans=list(files-database)
+    orphans=list(files-database)
+    if len(orphans) > 0:
         print("Number of orphaned revisions found on the remote: " + str(len(orphans)))
         target=JOPLIN_DIR + "/" + REVISIONS_ARCHIVE_DIR
         if not os.path.isdir(target):
