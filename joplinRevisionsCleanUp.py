@@ -71,7 +71,7 @@ def getrevisionsfromfiles():
                               shell=True, text=True)
         if grep.returncode == 0:
             if len(grep.stdout) > 0:
-                revisions = grep.stdout[:-1].split('\n')  # removes the last \n character from the captured output before splitting
+                revisions = grep.stdout[:-1].split("\n")  # removes the last \n character from the captured output before splitting
                 return set(revisions)
             else:
                 return set()  # grep returned no matching file i.e. the result is an empty set

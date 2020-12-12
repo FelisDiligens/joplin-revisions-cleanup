@@ -9,7 +9,33 @@ JOPLIN_BACKUP_FILE=~/JOPLIN_REMOTE_BACKUP.tgz
 JOPLIN_DB_DATA=~/joplin-db-data.txt
 LOG=~/joplin-remote-cleanup.log
 BACKUP=1
-DEBUG=0
+DEBUG=1
+
+rotation() {
+  # ${string%substring} deletes the shortest match of substring from the end of string.
+  # https://tldp.org/LDP/abs/html/string-manipulation.html
+  local ARCHIVES=($(ls -tr ${JOPLIN_BACKUP_FILE%.tgz}.*.tgz 2> /dev/null))
+  if [[ ${#ARCHIVES[*]} > 0 ]]; then
+    local COUNT=$((${#ARCHIVES[*]}+1))
+    if [[ $COUNT > 5 ]]; then
+      echo "WARNING ($FUNCNAME): backup archives are piling up, consider cleaning up."
+    fi
+    for ARCHIVE in ${ARCHIVES[*]}; do
+      mv $ARCHIVE ${JOPLIN_BACKUP_FILE%.tgz}.${COUNT}.tgz
+      if [[ $? != 0 ]]; then
+        echo "ERROR (${FUNCNAME}): something happened when rotating ${ARCHIVE}, aborting." | tee -a $LOG
+        exit 1
+      fi
+      COUNT=$(($COUNT-1))
+    done
+  fi
+  mv $JOPLIN_BACKUP_FILE ${JOPLIN_BACKUP_FILE%.tgz}.1.tgz
+  if [[ $? != 0 ]]; then
+    echo "ERROR (${FUNCNAME}): something happened when rotating ${JOPLIN_BACKUP_FILE}, aborting." | tee -a $LOG
+    exit 1
+  fi
+  echo "  * Backup rotation successful." | tee -a $LOG
+}
 
 echo "--------------- $(date) Joplin's revisions cleanup job starts ---------------" | tee -a $LOG
 
@@ -17,20 +43,10 @@ if [[ $BACKUP == 1 ]]; then
   echo "Backing up Joplin's remote local sync directory." | tee -a $LOG
   if [[ -f $JOPLIN_BACKUP_FILE ]]; then
     # a backup file already exists, rotating
-    # ${string%substring} deletes the shortest match of substring from the end of string. 
-    # https://tldp.org/LDP/abs/html/string-manipulation.html
-    NB_BACKUPS=$(ls ${JOPLIN_BACKUP_FILE%.tgz}.*.tgz 2> /dev/null | wc -l)
-    NB_BACKUPS=$(($NB_BACKUPS+1))
-    mv $JOPLIN_BACKUP_FILE ${JOPLIN_BACKUP_FILE%.tgz}.${NB_BACKUPS}.tgz
-    if [[ $? == 0 ]]; then
-      echo "  * Backup rotation successful." | tee -a $LOG
-    else
-      echo "ERROR: backup rotation failure, aborting!" | tee -a $LOG
-      exit 1
-    fi
+    rotation
   fi
   tar -cvzf $JOPLIN_BACKUP_FILE --exclude=$REVISIONS_ARCHIVE_DIR $JOPLIN_DIR 2> /dev/null >> $LOG
-  if [ $? == 0 ]; then
+  if [[ $? == 0 ]]; then
     echo "  * Backup successful ... moving forward." | tee -a $LOG
   else
     echo "ERROR: backup failed, aborting!" | tee -a $LOG
@@ -47,6 +63,7 @@ sqlite3 $JOPLIN_DB "select id from notes" > $JOPLIN_DB_DATA
 sqlite3 $JOPLIN_DB "select id from folders" >> $JOPLIN_DB_DATA
 sqlite3 $JOPLIN_DB "select id from resources" >> $JOPLIN_DB_DATA
 sqlite3 $JOPLIN_DB "select id from master_keys" >> $JOPLIN_DB_DATA
+sqlite3 $JOPLIN_DB "select id from revisions" >> $JOPLIN_DB_DATA
 
 ########################################################################
 ## TODO more queries may be necessary to cover all items like tags, ...
@@ -64,6 +81,8 @@ fi
 
 FILES=($(ls ${JOPLIN_DIR}/*.md | sed -E -e "s/^\/.*\///" -e "s/([a-z0-9]*)\.md/\1/" | sort))
 # ordered list of file IDs in Joplin's sync directory
+# the sed commands first remove the path then the .md extention leaving just the file name
+# which is a joplin ID
 
 echo "Number of files in Joplin's sync directory: ${#FILES[*]}" | tee -a $LOG
 
@@ -99,7 +118,7 @@ if [[ ${#ORPHAN_FILES[*]} -gt 0 ]]; then # WEIRD ?!? using '>' actually redirect
   for ORPHAN_FILE in ${ORPHAN_FILES[*]}; do
     FILE_TYPE=$(grep type_ ${JOPLIN_DIR}/$ORPHAN_FILE.md | awk '{print $2}')
     if [[ $FILE_TYPE == 13 ]]; then
-      # only archive revision files, not other kinds of Joplin's data
+      # only archive revision files, no other kind of Joplin's data
       if [[ $DEBUG != 0 ]]; then
         echo "DEBUG: mv ${JOPLIN_DIR}/${ORPHAN_FILE}.md ${JOPLIN_DIR}/$REVISIONS_ARCHIVE_DIR"
         # similar to a dry run option, display the command don't actually do anything
