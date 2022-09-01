@@ -13,6 +13,7 @@ import sqlite3
 import io
 from pathlib import Path
 import subprocess
+import re
 
 #
 # VARIABLES
@@ -20,11 +21,13 @@ import subprocess
 
 USER_HOME       = str(Path.home()) # Windows: %USERPROFILE%, Linux: ~
 ONEDRIVE_DIR    = os.environ['ONEDRIVE'] # Windows has an environment variable: %ONEDRIVE%
+#ONEDRIVE_DIR    = "/path/to/your/OneDrive/" # on Linux
 DATABASE_DIR    = os.path.join(USER_HOME, ".config", "joplin-desktop") # Windows: %USERPROFILE%\.config\joplin-desktop, Linux: ~/.config/joplin-desktop
+#DATABASE_DIR    = os.path.join(USER_HOME, "snap/joplin-desktop/current/.config/joplin-desktop") # Linux (Snap): ~/snap/joplin-desktop/current/.config/joplin-desktop/
 JOPLIN_DIR      = os.path.join(ONEDRIVE_DIR, "Anwendungen", "Joplin") # local sync directory of Joplin's remote folder
 
 # Backups:
-BACKUP_FILE     = os.path.join(USER_HOME, "Documents", "Joplin_Remote_Backup") #.zip
+BACKUP_FILE     = os.path.join(USER_HOME, "Joplin_Remote_Backup") #.zip
 DO_BACKUP       = True
 
 # Leave as is:
@@ -38,11 +41,18 @@ JOPLIN_DB       = os.path.join(DATABASE_DIR, DATABASE_NAME)
 
 
 def is_joplin_running():
-    """Only works under Windows."""
     if sys.platform.startswith('win'):
         return b"Joplin.exe" in subprocess.check_output('tasklist', shell=True)
     elif sys.platform.startswith('linux'):
-        pass # TODO: Implement for Linux
+        # https://stackoverflow.com/a/4139017
+        try:
+            ps     = subprocess.Popen("ps -eaf | grep joplin-desktop", shell=True, stdout=subprocess.PIPE)
+            output = ps.stdout.read().decode("utf-8")
+            ps.stdout.close()
+            ps.wait()
+            return re.search('/joplin-desktop/', output) is not None
+        except:
+            return False
     return False
 
 
