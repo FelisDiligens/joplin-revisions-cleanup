@@ -58,18 +58,11 @@ def rotation():  # creates a kind of "lifo" rotation, latest rotation is up in t
     os.rename(JOPLIN_BACKUP_FILE, JOPLIN_BACKUP_FILE[0:-4] + ".1.tgz")
 
 
-def backup_filter(tarinfo):
-    if tarinfo.name.find(REVISIONS_ARCHIVE_DIR) < 0:  # exclude any existing orphaned revision archive
-        return tarinfo
-    else:
-        return None
-
-
 def backup():
     if os.path.isfile(JOPLIN_BACKUP_FILE):  # a backup file already exists, rotating backups
         rotation()
     archive = tarfile.open(JOPLIN_BACKUP_FILE, "w:gz")
-    archive.add(JOPLIN_DIR, filter=backup_filter)
+    archive.add(JOPLIN_DIR)
     archive.close()
 
 
