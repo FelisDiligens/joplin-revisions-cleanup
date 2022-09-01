@@ -8,7 +8,7 @@ import sys
 import os
 import os.path
 import glob
-import tarfile
+import shutil
 import sqlite3
 import io
 from pathlib import Path
@@ -18,18 +18,18 @@ import subprocess
 # VARIABLES
 #
 
-USER_HOME             = str(Path.home()) # Windows: %USERPROFILE%, Linux: ~
-ONEDRIVE_DIR          = os.environ['ONEDRIVE'] # Windows has an environment variable: %ONEDRIVE%
-DATABASE_DIR          = os.path.join(USER_HOME, ".config", "joplin-desktop") # Windows: %USERPROFILE%\.config\joplin-desktop, Linux: ~/.config/joplin-desktop
-JOPLIN_DIR            = os.path.join(ONEDRIVE_DIR, "Anwendungen", "Joplin") # local sync directory of Joplin's remote folder
+USER_HOME       = str(Path.home()) # Windows: %USERPROFILE%, Linux: ~
+ONEDRIVE_DIR    = os.environ['ONEDRIVE'] # Windows has an environment variable: %ONEDRIVE%
+DATABASE_DIR    = os.path.join(USER_HOME, ".config", "joplin-desktop") # Windows: %USERPROFILE%\.config\joplin-desktop, Linux: ~/.config/joplin-desktop
+JOPLIN_DIR      = os.path.join(ONEDRIVE_DIR, "Anwendungen", "Joplin") # local sync directory of Joplin's remote folder
 
 # Backups:
-JOPLIN_BACKUP_FILE    = os.path.join(USER_HOME, "Joplin_Remote_Backup.tgz")
-DO_BACKUP             = False
+BACKUP_FILE     = os.path.join(USER_HOME, "Documents", "Joplin_Remote_Backup") #.zip
+DO_BACKUP       = True
 
 # Leave as is:
-DATABASE_NAME         = "database.sqlite"
-JOPLIN_DB             = os.path.join(DATABASE_DIR, DATABASE_NAME)
+DATABASE_NAME   = "database.sqlite"
+JOPLIN_DB       = os.path.join(DATABASE_DIR, DATABASE_NAME)
 
 
 #
@@ -47,23 +47,21 @@ def is_joplin_running():
 
 
 def rotation():  # creates a kind of "lifo" rotation, latest rotation is up in the queue
-    backups = glob.glob(JOPLIN_BACKUP_FILE[0:-4] + ".*.tgz")
+    backups = glob.glob(BACKUP_FILE + ".*.zip")
     spukcab = sorted(backups, reverse=True)
     count = len(spukcab) + 1
     if count > 5:
         print("WARNING: Joplin's backups are piling up, consider cleaning up old backups.")
     for archive in spukcab:
-        os.rename(archive, JOPLIN_BACKUP_FILE[0:-4] + "." + str(count) + ".tgz")
+        os.rename(archive, BACKUP_FILE + "." + str(count) + ".zip")
         count -= 1
-    os.rename(JOPLIN_BACKUP_FILE, JOPLIN_BACKUP_FILE[0:-4] + ".1.tgz")
+    os.rename(BACKUP_FILE + ".zip", BACKUP_FILE + ".1.zip")
 
 
 def backup():
-    if os.path.isfile(JOPLIN_BACKUP_FILE):  # a backup file already exists, rotating backups
+    if os.path.isfile(BACKUP_FILE + ".zip"):  # a backup file already exists, rotating backups
         rotation()
-    archive = tarfile.open(JOPLIN_BACKUP_FILE, "w:gz")
-    archive.add(JOPLIN_DIR)
-    archive.close()
+    shutil.make_archive(BACKUP_FILE, 'zip', JOPLIN_DIR)
 
 
 def get_revisions_from_db():
