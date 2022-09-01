@@ -28,3 +28,6 @@ python.exe ".\revisions-cleanup.py"
 ```
 
 That should be it! :)
+
+## Recommended
+- [joplin-vacuum by jerrylususu](https://github.com/jerrylususu/joplin-vacuum) to remove orphaned attachments.
