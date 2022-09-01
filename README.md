@@ -22,7 +22,7 @@ Then open `revisions-cleanup.py` in a text editor and edit the variables to poin
 
 > **IMPORTANT**: Please always make a backup of your files before running random scripts you download from the internet!
 
-Now run the python script. Make sure that you have installed Python 3!  
+Now close Joplin and run the python script. Make sure that you have installed [Python 3](https://www.microsoft.com/store/productId/9PJPW5LDXLZ5)!  
 ```ps
 python.exe ".\revisions-cleanup.py"
 ```
