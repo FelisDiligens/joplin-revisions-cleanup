@@ -8,8 +8,8 @@ So, I adapted [p6ril's script](https://github.com/p6ril/joplinRevisionsCleanUp) 
 
 ## Requirements
 - Python 3
- - [Download from Microsoft Store](https://www.microsoft.com/store/productId/9PJPW5LDXLZ5)
- - Should be installed on Linux by default.
+  - [Download from Microsoft Store](https://www.microsoft.com/store/productId/9PJPW5LDXLZ5)
+  - Should be installed on Linux by default.
 
 ## Usage
 First, download the script.
