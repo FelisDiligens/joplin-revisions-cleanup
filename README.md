@@ -29,6 +29,7 @@ Then open `revisions-cleanup.py` in a text editor and edit the variables to poin
 - `DATABASE_DIR` ⇒ Should point to where the database is stored. Leave as is if you haven't changed that.  
 - `JOPLIN_DIR` ⇒ Should point to your locally synced remote folder. In my case, it's stored on OneDrive.  
 - `DO_BACKUP = True/False` ⇒ Change, depending on whether you want to create a backup before deleting any files.
+- `DRY_RUN` ⇒ Set to `False` if you actually want to delete the files.
 
 > **IMPORTANT**: Please always make a backup of your files before running random scripts you download from the internet!
 

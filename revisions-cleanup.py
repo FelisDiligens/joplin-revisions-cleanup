@@ -19,6 +19,8 @@ import re
 # VARIABLES
 #
 
+DRY_RUN         = True
+
 USER_HOME       = str(Path.home()) # Windows: %USERPROFILE%, Linux: ~
 ONEDRIVE_DIR    = os.environ['ONEDRIVE'] # Windows has an environment variable: %ONEDRIVE%
 #ONEDRIVE_DIR    = "/path/to/your/OneDrive/" # on Linux
@@ -132,11 +134,15 @@ def reconcile():
     orphans = list(files - database)
     if len(orphans) > 0:
         print("Number of orphaned revisions found on the remote: " + str(len(orphans)))
-        print("Deleting ...")
-        for item in orphans:
-            path = os.path.join(JOPLIN_DIR, item + ".md")
-            print("    - " + item + ".md")
-            os.remove(path)
+        if DRY_RUN:
+            for item in orphans:
+                print("    - " + item + ".md")
+        else:
+            print("Deleting ...")
+            for item in orphans:
+                path = os.path.join(JOPLIN_DIR, item + ".md")
+                print("    - " + item + ".md")
+                os.remove(path)
 
 
 if __name__ == "__main__":
@@ -149,7 +155,10 @@ Modified by FelisDiligens
         print("ERROR: Please make sure to close Joplin! (File → Quit)")
         sys.exit(-1)
 
-    if DO_BACKUP:
+    if DRY_RUN:
+        print("Dry run: Nothing will be deleted.")
+
+    if DO_BACKUP and not DRY_RUN:
         print("Making backup...")
         backup()
 
