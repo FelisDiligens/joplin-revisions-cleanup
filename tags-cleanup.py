@@ -5,6 +5,7 @@ import os.path
 import sqlite3
 import sys
 import subprocess
+import re
 
 #
 # VARIABLES
